@@ -1,0 +1,1213 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Play, Code, Bug, Check, X, ArrowRight, RotateCcw, Trophy, 
+  Home, ChevronRight, Terminal, Hammer, Users, BarChart3, 
+  LogOut, GraduationCap, School, BookOpen, Library, Plus,
+  GitBranch, Layers, LayoutGrid, Upload, Sparkles, FileText, Loader2
+} from 'lucide-react';
+
+/**
+ * ==========================================
+ * DATA & CURRICULUM DEFINITIONS
+ * ==========================================
+ */
+const MODULE_TYPES = {
+  PREDICT: 'predict',
+  WRITE: 'write',
+  DEBUG: 'debug',
+  BUILD: 'build'
+};
+
+// We now structure content by "Course" or "Topic"
+const DEFAULT_COURSES = [
+  {
+    id: 'python-loops',
+    title: 'Python Loops',
+    description: 'Master for-loops, while-loops, and range()',
+    icon: RotateCcw,
+    color: 'blue',
+    content: {
+      [MODULE_TYPES.PREDICT]: [
+        {
+          id: 'p1',
+          title: 'The Basic Range',
+          instruction: 'What will this code output?',
+          code: `for i in range(3):\n    print(i)`,
+          expectedOutput: "0\n1\n2",
+          hint: "range(n) starts at 0 and goes up to n-1."
+        },
+        {
+          id: 'p2',
+          title: 'Start and Stop',
+          instruction: 'What numbers are printed?',
+          code: `for i in range(2, 5):\n    print(i)`,
+          expectedOutput: "2\n3\n4",
+          hint: "First number inclusive, second exclusive."
+        },
+        {
+          id: 'p3',
+          title: 'Countdown',
+          instruction: 'Trace the negative step.',
+          code: `for i in range(5, 0, -2):\n    print(i)`,
+          expectedOutput: "5\n3\n1",
+          hint: "Start at 5, subtract 2 each time, stop before 0."
+        },
+        {
+          id: 'p4',
+          title: 'Nested Loop',
+          instruction: 'Loops inside loops!',
+          code: `for i in range(2):\n    for j in range(2):\n        print(i + j)`,
+          expectedOutput: "0\n1\n1\n2",
+          hint: "Inner loop runs fully for every single iteration of the outer loop."
+        },
+        {
+          id: 'p5',
+          title: 'The Skipper',
+          instruction: 'Predict the effect of "continue".',
+          code: `for i in range(4):\n    if i == 2:\n        continue\n    print(i)`,
+          expectedOutput: "0\n1\n3",
+          hint: "'continue' skips the rest of the current iteration."
+        }
+      ],
+      [MODULE_TYPES.WRITE]: [
+        {
+          id: 'w1',
+          title: 'Fill in the Range',
+          instruction: 'Print numbers 0 to 4.',
+          template: `for i in ____(5):\n    print(i)`,
+          solution: 'range',
+          type: 'fill-in',
+          hint: "Use the range() function."
+        },
+        {
+          id: 'w2',
+          title: 'Dynamic Range',
+          instruction: 'Loop based on list length.',
+          template: `items = ['a', 'b', 'c']\nfor i in range(____(items)):\n    print(i)`,
+          solution: 'len',
+          type: 'fill-in',
+          hint: "Use the function that gets the length of a list."
+        },
+        {
+          id: 'w3',
+          title: 'Accumulator Short',
+          instruction: 'Use the shorthand operator to add to total.',
+          template: `total = 0\nfor n in [1, 2]:\n    total ____ n`,
+          solution: '+=',
+          type: 'fill-in',
+          hint: "The operator that adds and assigns in one step."
+        },
+        {
+          id: 'w4',
+          title: 'Enumeration',
+          instruction: 'Get index and value together.',
+          template: `names = ['Ann', 'Bob']\nfor i, name in ____(names):\n    print(i, name)`,
+          solution: 'enumerate',
+          type: 'fill-in',
+          hint: "The function that returns pairs of (index, value)."
+        }
+      ],
+      [MODULE_TYPES.DEBUG]: [
+        {
+          id: 'd1',
+          title: 'The Missing Colon',
+          instruction: 'Fix the syntax error.',
+          initialCode: `for i in range(5)\n    print(i)`,
+          validRegex: /for\s+i\s+in\s+range\(5\):/,
+          hint: "Loops need a colon at the end."
+        },
+        {
+          id: 'd2',
+          title: 'Not Iterable',
+          instruction: 'You can only loop through sequences, not integers.',
+          initialCode: `count = 10\nfor i in count:\n    print(i)`,
+          validRegex: /for\s+i\s+in\s+range\(count\):/,
+          hint: "Wrap the integer 'count' in a range() function."
+        },
+        {
+          id: 'd3',
+          title: 'Variable Scope Typo',
+          instruction: 'The print statement uses the wrong variable name.',
+          initialCode: `for number in [1, 2, 3]:\n    print(num)`,
+          validRegex: /for\s+(number)\s+in\s+\[1,\s*2,\s*3\]:\s*\n(?:\s{4}|\t)print\(\1\)/,
+          hint: "The variable inside print() must match the loop variable."
+        },
+        {
+          id: 'd4',
+          title: 'Bad Indentation',
+          instruction: 'The second print should also be inside the loop.',
+          initialCode: `for i in range(3):\n    print("Looping")\nprint(i)`,
+          validRegex: /for\s+i\s+in\s+range\(3\):\s*\n(?:\s{4}|\t)print\("Looping"\)\s*\n(?:\s{4}|\t)print\(i\)/,
+          hint: "Indent the last line so it belongs to the for-loop."
+        }
+      ],
+      [MODULE_TYPES.BUILD]: [
+        {
+          id: 'b1',
+          title: 'Checkout Counter',
+          instruction: 'Loop through "prices", add to "total", print "total".',
+          initialCode: `prices = [10, 5, 20]\ntotal = 0\n# Write loop here\n`,
+          validRegex: /for\s+(\w+)\s+in\s+prices:[\s\S]*total\s*\+=\s*\1[\s\S]*print\(total\)/,
+          hint: "Iterate and accumulate."
+        },
+        {
+          id: 'b2',
+          title: 'Only Evens',
+          instruction: 'Loop through "nums". If a number is even (n % 2 == 0), print it.',
+          initialCode: `nums = [1, 2, 3, 4, 5, 6]\n# Write loop here\n`,
+          validRegex: /for\s+(\w+)\s+in\s+nums:\s*\n(?:\s{4}|\t)if\s+\1\s*%\s*2\s*==\s*0:\s*\n(?:\s{8}|\t\t)print\(\1\)/,
+          hint: "Nest an if-statement inside the loop."
+        },
+        {
+          id: 'b3',
+          title: 'Find Maximum',
+          instruction: 'Find the largest number in "scores" without using max(). Update "highest".',
+          initialCode: `scores = [40, 92, 85, 99]\nhighest = 0\n# Write loop here\n\nprint(highest)`,
+          validRegex: /for\s+(\w+)\s+in\s+scores:\s*\n(?:\s{4}|\t)if\s+\1\s*>\s*highest:\s*\n(?:\s{8}|\t\t)highest\s*=\s*\1/,
+          hint: "If the current number is > highest, set highest = current."
+        },
+        {
+          id: 'b4',
+          title: 'Filter Words',
+          instruction: 'Loop through "words". Print the word only if len(word) > 3.',
+          initialCode: `words = ["is", "the", "loop", "python"]\n# Write loop here\n`,
+          validRegex: /for\s+(\w+)\s+in\s+words:\s*\n(?:\s{4}|\t)if\s+len\(\1\)\s*>\s*3:\s*\n(?:\s{8}|\t\t)print\(\1\)/,
+          hint: "Check the length of the loop variable."
+        }
+      ]
+    }
+  },
+  {
+    id: 'python-conditionals',
+    title: 'Logic & Conditionals',
+    description: 'If, else, and elif statements',
+    icon: GitBranch,
+    color: 'purple',
+    content: {
+      [MODULE_TYPES.PREDICT]: [
+        {
+          id: 'cp1',
+          title: 'Simple If',
+          instruction: 'What is the output?',
+          code: `x = 10\nif x > 5:\n    print("Big")`,
+          expectedOutput: "big",
+          hint: "Is 10 greater than 5?"
+        },
+        {
+          id: 'cp2',
+          title: 'Logic Gate',
+          instruction: 'What prints? Note the "and" operator.',
+          code: `a = True\nb = False\nif a and b:\n    print("Yes")\nelse:\n    print("No")`,
+          expectedOutput: "no",
+          hint: "'and' requires BOTH sides to be True."
+        },
+        {
+          id: 'cp3',
+          title: 'Elif Chain',
+          instruction: 'Follow the logic path.',
+          code: `score = 75\nif score >= 90:\n    print("A")\nelif score >= 70:\n    print("B")\nelse:\n    print("C")`,
+          expectedOutput: "b",
+          hint: "It stops at the first True condition."
+        },
+        {
+          id: 'cp4',
+          title: 'Nested Condition',
+          instruction: 'Predict the output.',
+          code: `x = 10\ny = 5\nif x > 5:\n    if y > 5:\n        print("A")\n    else:\n        print("B")`,
+          expectedOutput: "b",
+          hint: "First check x, then check y."
+        }
+      ],
+      [MODULE_TYPES.WRITE]: [
+        {
+          id: 'cw1',
+          title: 'Else Statement',
+          instruction: 'Complete the else block.',
+          template: `if x > 10:\n    print("Yes")\n____:\n    print("No")`,
+          solution: 'else',
+          type: 'fill-in',
+          hint: "The opposite of 'if' is 'else'."
+        },
+        {
+          id: 'cw2',
+          title: 'Else If',
+          instruction: 'The keyword for "else if" in Python.',
+          template: `if x == 1:\n    print(1)\n____ x == 2:\n    print(2)`,
+          solution: 'elif',
+          type: 'fill-in',
+          hint: "Short for else if."
+        },
+        {
+          id: 'cw3',
+          title: 'Equality',
+          instruction: 'Check if x is equal to 5.',
+          template: `if x ____ 5:\n    print("Equal")`,
+          solution: '==',
+          type: 'fill-in',
+          hint: "Single = assigns, double = compares."
+        },
+        {
+          id: 'cw4',
+          title: 'Both True',
+          instruction: 'Check if A and B are both true.',
+          template: `if A ____ B:\n    print("Both")`,
+          solution: 'and',
+          type: 'fill-in',
+          hint: "The logical conjunction operator."
+        }
+      ],
+      [MODULE_TYPES.DEBUG]: [
+        {
+          id: 'cd1',
+          title: 'Indentation Error',
+          instruction: 'Fix the indentation.',
+          initialCode: `if True:\nprint("True")`,
+          validRegex: /if\s+True:\s*\n(?:\s{4}|\t)print\("True"\)/,
+          hint: "Indentation is key in Python."
+        },
+        {
+          id: 'cd2',
+          title: 'Assignment Mistake',
+          instruction: 'We are assigning inside an if-statement instead of comparing.',
+          initialCode: `score = 10\nif score = 10:\n    print("Ten")`,
+          validRegex: /if\s+score\s*==\s*10:/,
+          hint: "Use double equals (==) for comparison."
+        },
+        {
+          id: 'cd3',
+          title: 'Wrong Keyword',
+          instruction: 'Python does not use "else if". Fix it.',
+          initialCode: `if x > 5:\n    print("Big")\nelse if x > 2:\n    print("Medium")`,
+          validRegex: /elif\s+x\s*>\s*2:/,
+          hint: "Use 'elif' instead."
+        },
+        {
+          id: 'cd4',
+          title: 'Else Logic',
+          instruction: 'Else statements cannot have conditions.',
+          initialCode: `if x > 5:\n    print("Yes")\nelse x < 5:\n    print("No")`,
+          validRegex: /elif\s+x\s*<\s*5:|else:/,
+          hint: "Either change it to 'elif' or remove the condition."
+        }
+      ],
+      [MODULE_TYPES.BUILD]: [
+        {
+          id: 'cb1',
+          title: 'Age Checker',
+          instruction: 'If age >= 18 print "Adult", else print "Minor".',
+          initialCode: `age = 20\n# Write logic here\n`,
+          validRegex: /if\s+age\s*>=\s*18:\s*\n(?:\s{4}|\t)print\("Adult"\)\s*\nelse:\s*\n(?:\s{4}|\t)print\("Minor"\)/,
+          hint: "Use if and else."
+        },
+        {
+          id: 'cb2',
+          title: 'Pos Neg Zero',
+          instruction: 'Check "num". If > 0 print "Pos", if < 0 print "Neg", else print "Zero".',
+          initialCode: `num = -5\n# Write logic here\n`,
+          validRegex: /if\s+num\s*>\s*0:[\s\S]*elif\s+num\s*<\s*0:[\s\S]*else:/,
+          hint: "You need if, elif, and else."
+        },
+        {
+          id: 'cb3',
+          title: 'Grade Calculator',
+          instruction: 'If score >= 50 print "Pass", else print "Fail".',
+          initialCode: `score = 45\n# Write logic here\n`,
+          validRegex: /if\s+score\s*>=\s*50:\s*\n(?:\s{4}|\t)print\("Pass"\)\s*\nelse:\s*\n(?:\s{4}|\t)print\("Fail"\)/,
+          hint: "Simple pass/fail check."
+        },
+        {
+          id: 'cb4',
+          title: 'Even or Odd',
+          instruction: 'If "val" % 2 == 0 print "Even", else print "Odd".',
+          initialCode: `val = 7\n# Write logic here\n`,
+          validRegex: /if\s+val\s*%\s*2\s*==\s*0:[\s\S]*print\("Even"\)[\s\S]*else:[\s\S]*print\("Odd"\)/,
+          hint: "Modulo operator % finds the remainder."
+        }
+      ]
+    }
+  }
+];
+
+// Content for simulated AI generation
+const AI_GENERATED_COURSE = {
+  id: 'python-lists-dicts',
+  title: 'Data Structures',
+  description: 'AI Generated from uploaded resources: Lists, Dictionaries, and Tuples.',
+  icon: Layers,
+  color: 'emerald',
+  content: {
+    [MODULE_TYPES.PREDICT]: [
+      {
+        id: 'ai-p1',
+        title: 'List Access',
+        instruction: 'What is the output?',
+        code: `data = [10, 20, 30]\nprint(data[1])`,
+        expectedOutput: "20",
+        hint: "Lists are zero-indexed."
+      },
+      {
+        id: 'ai-p2',
+        title: 'Dictionary Lookup',
+        instruction: 'What prints?',
+        code: `user = {"name": "Kai", "age": 15}\nprint(user["name"])`,
+        expectedOutput: "kai",
+        hint: "Access dictionary values by their key."
+      }
+    ],
+    [MODULE_TYPES.WRITE]: [
+      {
+        id: 'ai-w1',
+        title: 'Append to List',
+        instruction: 'Add "yellow" to the colors list.',
+        template: `colors = ["red"]\ncolors.____("yellow")`,
+        solution: 'append',
+        type: 'fill-in',
+        hint: "The method to add an item to the end."
+      },
+      {
+        id: 'ai-w2',
+        title: 'Dictionary Keys',
+        instruction: 'Loop through keys in a dict.',
+        template: `d = {"a": 1, "b": 2}\nfor key in d.____():\n    print(key)`,
+        solution: 'keys',
+        type: 'fill-in',
+        hint: "Method to get all keys."
+      }
+    ],
+    [MODULE_TYPES.DEBUG]: [
+      {
+        id: 'ai-d1',
+        title: 'Key Error',
+        instruction: 'Accessing a key that doesn\'t exist causes an error. Fix the key name.',
+        initialCode: `d = {"apple": 5}\nprint(d["banana"])`,
+        validRegex: /print\(d\["apple"\]\)/,
+        hint: "Change the key to one that exists in the dictionary."
+      }
+    ],
+    [MODULE_TYPES.BUILD]: [
+      {
+        id: 'ai-b1',
+        title: 'Inventory Count',
+        instruction: 'Count total items. Iterate over "stock" values and add to "total".',
+        initialCode: `stock = {"apples": 10, "pears": 5}\ntotal = 0\n# Write loop here\n`,
+        validRegex: /for\s+(\w+)\s+in\s+stock.values\(\):\s*\n(?:\s{4}|\t)total\s*\+=\s*\1/,
+        hint: "Use .values() to get the numbers."
+      }
+    ]
+  }
+};
+
+/**
+ * ==========================================
+ * SHARED COMPONENTS
+ * ==========================================
+ */
+
+const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false }) => {
+  const baseStyle = "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100";
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20",
+    secondary: "bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600",
+    outline: "border-2 border-slate-200 text-slate-700 hover:border-blue-500 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-400 dark:hover:text-blue-400",
+    success: "bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-500/20",
+    danger: "bg-rose-100 text-rose-600 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400"
+  };
+
+  return (
+    <button onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>
+      {children}
+    </button>
+  );
+};
+
+const Card = ({ children, className = '', onClick }) => (
+  <div onClick={onClick} className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
+    {children}
+  </div>
+);
+
+const ProgressBar = ({ current, total, color = "bg-blue-500" }) => {
+  const progress = total > 0 ? Math.min(((current + 1) / total) * 100, 100) : 0;
+  return (
+    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+      <div 
+        className={`${color} h-full transition-all duration-500 ease-out`}
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+};
+
+/**
+ * ==========================================
+ * APP LOGIC
+ * ==========================================
+ */
+export default function App() {
+  // Navigation & Auth
+  const [view, setView] = useState('login'); 
+  const [currentUser, setCurrentUser] = useState(null); 
+  
+  // Data State
+  const [courses, setCourses] = useState(DEFAULT_COURSES);
+  const [students, setStudents] = useState([]);
+  const [progressData, setProgressData] = useState({}); 
+
+  // AI Generator State
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [generationStep, setGenerationStep] = useState('idle'); // idle, processing, done
+  const [resourceText, setResourceText] = useState('');
+
+  // Selection State
+  const [activeCourseId, setActiveCourseId] = useState(null);
+  const [activeModule, setActiveModule] = useState(null);
+  const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
+  
+  // Interaction State
+  const [userInput, setUserInput] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [attempts, setAttempts] = useState(0);
+
+  // --- Auth Handlers ---
+  const handleLogin = (role, name = 'Student') => {
+    if (role === 'admin') {
+      setCurrentUser({ id: 'admin', name: 'Mrs. Anderson', role: 'admin' });
+      setView('admin');
+    } else {
+      setCurrentUser({ id: name.toLowerCase().replace(/\s/g, '-'), name: name, role: 'student' });
+      setView('student-courses'); // Go to course selection first
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setView('login');
+    setActiveCourseId(null);
+    setActiveModule(null);
+  };
+
+  // --- Admin Functions ---
+  const importClassroom = () => {
+    const mockStudents = [
+      { id: 'alex-riv', name: 'Alex Rivera' },
+      { id: 'sam-chen', name: 'Sam Chen' },
+      { id: 'jordan-lee', name: 'Jordan Lee' }
+    ];
+    setStudents(mockStudents);
+    // Initialize empty progress for all courses
+    const initialProgress = {};
+    mockStudents.forEach(s => {
+      initialProgress[s.id] = {}; // { courseId: { module: true } }
+    });
+    setProgressData(initialProgress);
+  };
+
+  const addNewTopic = () => {
+    const newCourse = {
+      id: `topic-${courses.length + 1}`,
+      title: 'New Topic ' + (courses.length + 1),
+      description: 'Draft programming topic...',
+      icon: Layers,
+      color: 'pink',
+      content: {
+        [MODULE_TYPES.PREDICT]: [],
+        [MODULE_TYPES.WRITE]: [],
+        [MODULE_TYPES.DEBUG]: [],
+        [MODULE_TYPES.BUILD]: []
+      }
+    };
+    setCourses([...courses, newCourse]);
+  };
+
+  const handleGenerateCourse = () => {
+    if (!resourceText.trim()) return;
+    
+    setGenerationStep('processing');
+    
+    // Simulate AI processing delay
+    setTimeout(() => {
+      // 1. Analyze text (simulation)
+      // 2. Create course
+      const newCourse = {
+        ...AI_GENERATED_COURSE,
+        id: `gen-${Date.now()}`,
+        // In a real app, this would come from the AI. We simulate it using the provided text.
+        description: `Generated from: "${resourceText.substring(0, 30)}..."`,
+      };
+      
+      setCourses([...courses, newCourse]);
+      setGenerationStep('done');
+      
+      // Reset after showing success
+      setTimeout(() => {
+        setShowGenerator(false);
+        setGenerationStep('idle');
+        setResourceText('');
+      }, 1500);
+    }, 2500);
+  };
+
+  // --- Navigation & Practice Handlers ---
+
+  const selectCourse = (courseId) => {
+    setActiveCourseId(courseId);
+    setView('student-modules');
+  };
+
+  const startModule = (moduleType) => {
+    setActiveModule(moduleType);
+    setCurrentProblemIndex(0);
+    setAttempts(0);
+    setStatus('idle');
+    
+    // Get initial code if applicable
+    const course = courses.find(c => c.id === activeCourseId);
+    const problems = course.content[moduleType];
+    
+    if (problems && problems.length > 0) {
+      if (moduleType === MODULE_TYPES.DEBUG || moduleType === MODULE_TYPES.BUILD) {
+        setUserInput(problems[0].initialCode);
+      } else {
+        setUserInput('');
+      }
+      setView('practice');
+    } else {
+      alert("No problems added to this module yet!");
+    }
+  };
+
+  const exitPractice = () => {
+    setView('student-modules');
+    setActiveModule(null);
+    setStatus('idle');
+  };
+
+  const exitModules = () => {
+    setView('student-courses');
+    setActiveCourseId(null);
+  };
+
+  // --- Logic ---
+  const getActiveProblem = () => {
+    if (!activeCourseId || !activeModule) return null;
+    const course = courses.find(c => c.id === activeCourseId);
+    return course?.content[activeModule]?.[currentProblemIndex];
+  };
+
+  const checkAnswer = () => {
+    const problem = getActiveProblem();
+    if (!problem) return;
+
+    let isCorrect = false;
+    const normInput = userInput.trim().replace(/\s+/g, '\n').toLowerCase();
+
+    if (activeModule === MODULE_TYPES.PREDICT) {
+       const normExpected = problem.expectedOutput.trim().replace(/\s+/g, '\n').toLowerCase();
+       isCorrect = normInput === normExpected;
+    } else if (activeModule === MODULE_TYPES.WRITE) {
+       isCorrect = userInput.trim() === problem.solution;
+    } else {
+       // Debug & Build use regex
+       const codeNorm = userInput.split('\n').map(l => l.trimEnd()).join('\n').trim();
+       isCorrect = problem.validRegex.test(codeNorm);
+    }
+
+    if (isCorrect) {
+      setStatus('success');
+    } else {
+      setStatus('error');
+      setAttempts(prev => prev + 1);
+    }
+  };
+
+  const nextProblem = () => {
+    const course = courses.find(c => c.id === activeCourseId);
+    const problems = course.content[activeModule];
+
+    if (currentProblemIndex + 1 < problems.length) {
+      const nextIdx = currentProblemIndex + 1;
+      setCurrentProblemIndex(nextIdx);
+      setAttempts(0);
+      if (activeModule === MODULE_TYPES.DEBUG || activeModule === MODULE_TYPES.BUILD) {
+        setUserInput(problems[nextIdx].initialCode);
+      } else {
+        setUserInput('');
+      }
+      setStatus('idle');
+    } else {
+      // Complete Module
+      if (currentUser && currentUser.role === 'student') {
+        setProgressData(prev => ({
+          ...prev,
+          [currentUser.id]: {
+            ...(prev[currentUser.id] || {}),
+            [activeCourseId]: {
+              ...(prev[currentUser.id]?.[activeCourseId] || {}),
+              [activeModule]: true
+            }
+          }
+        }));
+      }
+      setActiveModule('completed');
+    }
+  };
+
+  const handleTabKey = (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = e.target.selectionStart;
+      const end = e.target.selectionEnd;
+      const val = userInput.substring(0, start) + "    " + userInput.substring(end);
+      setUserInput(val);
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = start + 4;
+      }, 0);
+    }
+  };
+
+  // --- Views ---
+
+  const renderLogin = () => (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+      <Card className="w-full max-w-md p-8 text-center space-y-8 animate-in fade-in zoom-in-95">
+        <div className="space-y-2">
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Terminal size={32} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">Python Master</h1>
+          <p className="text-slate-500">Classroom Edition</p>
+        </div>
+
+        <div className="space-y-4">
+          <Button onClick={() => handleLogin('admin')} className="w-full py-3 text-lg justify-center relative group">
+            <School className="absolute left-4 opacity-50" />
+            Teacher Login
+          </Button>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Students</span>
+            </div>
+          </div>
+
+          {students.length > 0 ? (
+             <div className="grid grid-cols-1 gap-2">
+               {students.map(s => (
+                 <button 
+                  key={s.id}
+                  onClick={() => handleLogin('student', s.name)}
+                  className="p-3 text-left rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:bg-slate-700 transition-all flex items-center justify-between group"
+                 >
+                   <span className="font-medium text-slate-700 dark:text-slate-200">{s.name}</span>
+                   <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500" />
+                 </button>
+               ))}
+             </div>
+          ) : (
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-sm text-slate-500">
+              No students found. <br/> Teacher needs to sync roster.
+              <Button variant="secondary" onClick={() => handleLogin('student', 'Demo Student')} className="mt-4 w-full text-xs">
+                Login as Demo Student
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+
+  const renderAdmin = () => (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 relative">
+      {/* AI Generator Modal */}
+      {showGenerator && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg p-6 space-y-6 animate-in zoom-in-95">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                  <Sparkles className="text-violet-500" /> AI Course Builder
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Upload resources to generate a custom curriculum.
+                </p>
+              </div>
+              <button onClick={() => setShowGenerator(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors cursor-pointer group">
+                <Upload size={32} className="mx-auto text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                <p className="font-medium text-slate-600 dark:text-slate-300">Drop PDF or Text file here</p>
+                <p className="text-xs text-slate-400">Supported: .txt, .pdf, .md</p>
+              </div>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-slate-800 px-2 text-slate-500">Or paste text</span>
+                </div>
+              </div>
+
+              <textarea 
+                value={resourceText}
+                onChange={(e) => setResourceText(e.target.value)}
+                placeholder="Paste lecture notes, textbook chapters, or example code here..."
+                className="w-full h-32 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => setShowGenerator(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleGenerateCourse} 
+                disabled={!resourceText.trim() || generationStep !== 'idle'}
+                className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                {generationStep === 'idle' && (
+                  <>Generate <Sparkles size={16} className="ml-2" /></>
+                )}
+                {generationStep === 'processing' && (
+                  <><Loader2 size={16} className="animate-spin mr-2" /> Learning...</>
+                )}
+                {generationStep === 'done' && (
+                  <>Created! <Check size={16} className="ml-2" /></>
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center space-x-4">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <School size={24} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Teacher Dashboard</h2>
+              <p className="text-sm text-slate-500">Curriculum Manager</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+             <Button 
+                variant={students.length > 0 ? "secondary" : "primary"} 
+                onClick={importClassroom}
+                disabled={students.length > 0}
+              >
+                <Users size={18} className="mr-2" />
+                {students.length > 0 ? "Synced" : "Sync Classroom"}
+             </Button>
+             <Button variant="danger" onClick={handleLogout}>
+                <LogOut size={18} />
+             </Button>
+          </div>
+        </div>
+
+        {/* Curriculum Management */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Library size={20} /> Active Topics
+            </h3>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowGenerator(true)} className="text-sm bg-violet-600 hover:bg-violet-700 text-white border-none shadow-violet-500/20">
+                <Sparkles size={16} className="mr-2" /> Generate from Resources
+              </Button>
+              <Button onClick={addNewTopic} variant="outline" className="text-sm">
+                <Plus size={16} className="mr-1" /> Manual Topic
+              </Button>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {courses.map(course => (
+              <Card key={course.id} className="p-4 flex flex-col hover:border-blue-300 transition-colors cursor-pointer">
+                <div className="flex items-start justify-between mb-2">
+                  <div className={`p-2 rounded-lg bg-${course.color || 'blue'}-100 text-${course.color || 'blue'}-600`}>
+                    <course.icon size={20} />
+                  </div>
+                  <span className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                    {Object.values(course.content).flat().length} Problems
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-900 dark:text-white">{course.title}</h4>
+                <p className="text-sm text-slate-500 mt-1 mb-4">{course.description}</p>
+                <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+                   <button className="text-xs font-bold text-blue-600 hover:underline">Edit Content</button>
+                   <button className="text-xs font-bold text-slate-400 hover:text-slate-600">Settings</button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Student Progress Table */}
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <BarChart3 size={20} /> Student Progress
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                <tr>
+                  <th className="px-6 py-3 font-medium">Student Name</th>
+                  {courses.map(c => (
+                    <th key={c.id} className="px-6 py-3 text-center">{c.title}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {students.length === 0 ? (
+                   <tr><td colSpan={courses.length + 1} className="p-8 text-center text-slate-500">No students yet.</td></tr>
+                ) : (
+                  students.map(student => (
+                    <tr key={student.id} className="bg-white dark:bg-slate-800">
+                      <td className="px-6 py-4 font-medium">{student.name}</td>
+                      {courses.map(course => {
+                        const sProg = progressData[student.id]?.[course.id] || {};
+                        const doneCount = Object.values(sProg).filter(Boolean).length;
+                        const totalModules = 4; // Predict, Write, Debug, Build
+                        const pct = Math.round((doneCount / totalModules) * 100);
+                        
+                        return (
+                          <td key={course.id} className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                <div className={`h-full ${pct === 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{width: `${pct}%`}}></div>
+                              </div>
+                              <span className="text-xs text-slate-400 w-8">{pct}%</span>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderStudentCourses = () => (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">My Topics</h1>
+              <p className="text-slate-500 mt-1">Select a topic to practice</p>
+          </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut size={16} /> Logout
+          </Button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {courses.map(course => {
+            // Calculate progress for this course
+            const myProg = (currentUser && progressData[currentUser.id]?.[course.id]) || {};
+            const doneCount = Object.values(myProg).filter(Boolean).length;
+            const total = 4;
+            const isComplete = doneCount === total;
+
+            return (
+              <Card 
+                key={course.id} 
+                onClick={() => selectCourse(course.id)}
+                className="group cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+              >
+                <div className="p-6 flex items-start space-x-4">
+                  <div className={`p-4 rounded-xl bg-${course.color || 'blue'}-100 text-${course.color || 'blue'}-600 group-hover:scale-110 transition-transform`}>
+                    <course.icon size={32} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{course.title}</h3>
+                    <p className="text-slate-500 text-sm mb-4">{course.description}</p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-1">
+                         {[1,2,3,4].map(i => (
+                           <div key={i} className={`w-8 h-1.5 rounded-full ${i <= doneCount ? 'bg-green-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                         ))}
+                      </div>
+                      {isComplete ? (
+                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Completed</span>
+                      ) : (
+                        <span className="text-blue-600 group-hover:translate-x-1 transition-transform">
+                          <ArrowRight size={20} />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStudentModules = () => {
+    const course = courses.find(c => c.id === activeCourseId);
+    if (!course) return null;
+
+    const myProg = (currentUser && progressData[currentUser.id]?.[course.id]) || {};
+
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <button onClick={exitModules} className="flex items-center text-slate-500 hover:text-slate-900 mb-4 transition-colors">
+            <ArrowRight className="rotate-180 mr-2" size={20} /> Back to Topics
+          </button>
+          
+          <div className="flex items-center gap-4 mb-8">
+            <div className={`p-3 rounded-xl bg-${course.color}-100 text-${course.color}-600`}>
+              <course.icon size={32} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{course.title}</h1>
+              <p className="text-slate-500">Choose a practice mode</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+             {[
+               { id: MODULE_TYPES.PREDICT, icon: Play, color: "indigo", label: "Predict" },
+               { id: MODULE_TYPES.WRITE, icon: Code, color: "emerald", label: "Write" },
+               { id: MODULE_TYPES.DEBUG, icon: Bug, color: "rose", label: "Debug" },
+               { id: MODULE_TYPES.BUILD, icon: Hammer, color: "violet", label: "Build" }
+             ].map((mod) => {
+               const isDone = myProg[mod.id];
+               const Icon = mod.icon;
+               const hasContent = course.content[mod.id]?.length > 0;
+               
+               return (
+                <Card 
+                  key={mod.id} 
+                  onClick={() => hasContent && startModule(mod.id)}
+                  className={`relative group transition-all ${hasContent ? 'cursor-pointer hover:shadow-md hover:-translate-y-1' : 'opacity-50 cursor-not-allowed'}`}
+                >
+                  <div className={`h-2 w-full bg-${mod.color}-500 absolute top-0 left-0 right-0`} />
+                  <div className="p-6 flex flex-col items-center text-center h-full">
+                    <div className={`w-14 h-14 rounded-2xl bg-${mod.color}-50 dark:bg-${mod.color}-900/20 flex items-center justify-center mb-4 text-${mod.color}-600 dark:text-${mod.color}-400 group-hover:scale-110 transition-transform`}>
+                      <Icon size={28} />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">{mod.label}</h3>
+                    {isDone ? (
+                      <span className="mt-auto flex items-center text-green-600 text-sm font-bold bg-green-50 px-3 py-1 rounded-full">
+                        <Check size={14} className="mr-1" /> Done
+                      </span>
+                    ) : (
+                      <span className="mt-auto text-blue-600 text-sm font-medium flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {hasContent ? 'Start' : 'Coming Soon'} <ArrowRight size={14} className="ml-1" />
+                      </span>
+                    )}
+                  </div>
+                </Card>
+               );
+             })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPracticeMode = () => {
+    if (activeModule === 'completed') {
+      return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+          <div className="max-w-md w-full text-center space-y-6 animate-in zoom-in-95">
+            <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto shadow-xl">
+              <Trophy size={48} className="text-yellow-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Module Complete!</h2>
+            <Button onClick={exitPractice} className="w-full py-3 text-lg">
+              Return to Modules
+            </Button>
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+               {/* Confetti Animation */}
+               {[...Array(20)].map((_, i) => (
+                  <div key={i} className="absolute top-[-20px] w-2 h-2 bg-yellow-400 rounded-full animate-fall"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      animationDuration: `${Math.random() * 2 + 1}s`,
+                      animationDelay: `${Math.random() * 0.5}s`,
+                      backgroundColor: ['#FCD34D', '#60A5FA', '#34D399', '#F87171'][Math.floor(Math.random() * 4)]
+                    }}
+                  />
+               ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const problem = getActiveProblem();
+    if (!problem) return <div>Error loading problem</div>;
+
+    const isEditorMode = activeModule === MODULE_TYPES.DEBUG || activeModule === MODULE_TYPES.BUILD;
+
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+        {/* Header */}
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between">
+           <button onClick={exitPractice} className="flex items-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <ArrowRight className="rotate-180 mr-2" size={20} /> Exit
+           </button>
+           <div className="flex-1 max-w-xl mx-auto px-8">
+             <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                <span>{activeModule} Mode</span>
+                <span>{currentProblemIndex + 1} / {courses.find(c => c.id === activeCourseId).content[activeModule].length}</span>
+             </div>
+             <ProgressBar current={currentProblemIndex} total={courses.find(c => c.id === activeCourseId).content[activeModule].length} />
+           </div>
+           <div className="w-20"></div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 max-w-6xl mx-auto w-full p-6 grid md:grid-cols-2 gap-8 items-start">
+           <div className="space-y-6">
+              <div>
+                 <h2 className="text-2xl font-bold mb-3">{problem.title}</h2>
+                 <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed">{problem.instruction}</p>
+              </div>
+
+              <Card className="bg-slate-900 border-slate-800 shadow-xl overflow-hidden">
+                 <div className="flex items-center px-4 py-2 border-b border-slate-700 bg-slate-950/50">
+                    <span className="ml-2 text-xs text-slate-500 font-mono">script.py</span>
+                  </div>
+                  <div className="p-6 relative">
+                     {activeModule === MODULE_TYPES.WRITE ? (
+                        <pre className="font-mono text-slate-300 text-lg leading-relaxed whitespace-pre-wrap">
+                        {problem.template.split('____').map((part, i, arr) => (
+                          <React.Fragment key={i}>
+                            {part}
+                            {i < arr.length - 1 && (
+                              <span className="inline-block border-b-2 border-blue-500 min-w-[60px] text-center text-blue-400 font-bold mx-1">?</span>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </pre>
+                     ) : isEditorMode ? (
+                        <textarea 
+                          value={userInput}
+                          onChange={(e) => {
+                            setUserInput(e.target.value);
+                            setStatus('idle');
+                          }}
+                          onKeyDown={handleTabKey}
+                          className="w-full h-64 bg-transparent text-slate-300 font-mono text-lg resize-none focus:outline-none focus:bg-slate-800/50 rounded p-1 transition-colors"
+                          spellCheck="false"
+                        />
+                     ) : (
+                        <pre className="font-mono text-slate-300 text-lg leading-relaxed">
+                          <code>{problem.code}</code>
+                        </pre>
+                     )}
+                  </div>
+              </Card>
+
+              {status === 'error' && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 flex gap-3 text-orange-800 dark:text-orange-200 animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-0.5"><RotateCcw size={18} /></div>
+                  <div>
+                    <p className="font-semibold">Not quite right.</p>
+                    {attempts >= 3 && <p className="text-sm mt-1 opacity-90">Hint: {problem.hint}</p>}
+                    {attempts >= 5 && <p className="text-sm mt-1 font-bold text-orange-700">Ask your teacher for help!</p>}
+                  </div>
+                </div>
+              )}
+           </div>
+
+           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 h-full shadow-sm flex flex-col justify-center">
+               <label className="block text-sm font-bold text-slate-400 uppercase tracking-wide mb-4">
+                  {activeModule === MODULE_TYPES.PREDICT ? 'Output' : activeModule === MODULE_TYPES.WRITE ? 'Code Snippet' : 'Status'}
+               </label>
+
+               {activeModule === MODULE_TYPES.PREDICT && (
+                  <div className="relative mb-6">
+                    <textarea
+                      value={userInput}
+                      onChange={(e) => {
+                        setUserInput(e.target.value);
+                        setStatus('idle');
+                      }}
+                      className="w-full h-32 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:ring-0 transition-all resize-none"
+                      placeholder="Type expected output..."
+                    />
+                  </div>
+               )}
+
+               {activeModule === MODULE_TYPES.WRITE && (
+                   <input
+                    type="text"
+                    value={userInput}
+                    onChange={(e) => {
+                      setUserInput(e.target.value);
+                      setStatus('idle');
+                    }}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-lg text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-none transition-all mb-6"
+                    placeholder="Type missing code..."
+                  />
+               )}
+
+               {status === 'success' ? (
+                 <div className="text-center space-y-4 animate-in zoom-in-95">
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                       <Check size={32} strokeWidth={3} />
+                    </div>
+                    <h3 className="text-xl font-bold text-green-700 dark:text-green-400">Correct!</h3>
+                    <Button onClick={nextProblem} variant="success" className="w-full py-3 text-lg">
+                      Next Challenge <ChevronRight />
+                    </Button>
+                 </div>
+               ) : (
+                  <Button 
+                    onClick={checkAnswer} 
+                    disabled={!userInput && !isEditorMode}
+                    className="w-full py-4 text-lg shadow-lg shadow-blue-500/20"
+                  >
+                    {isEditorMode ? 'Run Code' : 'Check Answer'}
+                  </Button>
+               )}
+           </div>
+        </div>
+      </div>
+    );
+  };
+
+  // --- Main Render Switch ---
+
+  return (
+    <div className="font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      {view === 'login' && renderLogin()}
+      {view === 'admin' && renderAdmin()}
+      {view === 'student-courses' && renderStudentCourses()}
+      {view === 'student-modules' && renderStudentModules()}
+      {view === 'practice' && renderPracticeMode()}
+      
+      <style>{`
+        @keyframes fall {
+          0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .animate-fall { animation-name: fall; animation-timing-function: linear; }
+      `}</style>
+    </div>
+  );
+}
